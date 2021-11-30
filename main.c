@@ -6,7 +6,7 @@
 /*   By: mlebrun <mlebrun@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/11/28 18:45:14 by mlebrun           #+#    #+#             */
-/*   Updated: 2021/11/30 11:25:32 by mlebrun          ###   ########.fr       */
+/*   Updated: 2021/11/30 15:13:55 by mlebrun          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -183,6 +183,8 @@ int		main(int argc, char **argv, char **envp)
 	pipe_fd = init_pipe(nb_cmd);
 	while (argv[i] != NULL)
 	{
+		if (j != 0)
+			waitpid(pids[j - 1], NULL, 0);
 		pids[j] = fork();
 		if (pids[j] == 0)
 		{
@@ -201,6 +203,7 @@ int		main(int argc, char **argv, char **envp)
 					dup2(pipe_fd[j][1], 1);
 				}
 			}
+	close_fds(pipe_fd, nb_cmd);
 			path = strdup(argv[i]);
 			args = stock_args(argv, &i);
 			execve(path, args, envp);
@@ -209,7 +212,7 @@ int		main(int argc, char **argv, char **envp)
 		}
 		j++;
 		i += count_arg(argv, i) + 1;
-		if (argv[i] && strcmp(argv[i], "|") == 0)
+		if (argv[i] && (strcmp(argv[i], "|") == 0 || strcmp(argv[i], ";") == 0))
 			i++;
 	}
 	close_fds(pipe_fd, nb_cmd);
