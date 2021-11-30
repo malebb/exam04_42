@@ -6,7 +6,7 @@
 /*   By: mlebrun <mlebrun@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/11/28 18:45:14 by mlebrun           #+#    #+#             */
-/*   Updated: 2021/11/30 10:13:00 by mlebrun          ###   ########.fr       */
+/*   Updated: 2021/11/30 10:57:10 by mlebrun          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,26 +141,27 @@ int		**init_pipe(unsigned int nb_cmd)
 	pipe_fd = malloc(sizeof(int*) * nb_cmd - 1);
 	if (!pipe_fd)
 		return (NULL);
+	i = 0;
 	while (i < nb_cmd - 1)
 	{
 		pipe_fd[i] = malloc(sizeof(int) * 2);
 		if (!pipe_fd[i])
 			return (NULL);
 		pipe(pipe_fd[i]);
+		i++;
 	}
 	return (pipe_fd);
 }
 
 int		main(int argc, char **argv, char **envp)
 {
-	int		i;
-	int		j;
-	char	**args;
-	char	*path;
-	int		semicolon;
-	int		*pids;
+	int					i;
+	int					j;
+	char				**args;
+	char				*path;
+	int					*pids;
 	unsigned int		nb_cmd;
-	int		**pipe_fd;
+	int					**pipe_fd;
 
 	i = 1;
 	j = 0;
@@ -169,20 +170,23 @@ int		main(int argc, char **argv, char **envp)
 	pipe_fd = init_pipe(nb_cmd);
 	while (argv[i] != NULL)
 	{
-		printf("coucou\n");
 		pids[j] = fork();
 		if (pids[j] == 0)
 		{
 			if (j == 0)
 			{
-				if (argv[i + count_arg(argv, i) + 1] && strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
+				if (argv[i + count_arg(argv, i) + 1]
+					&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
 					dup2(pipe_fd[j][1], 1);
 			}
 			else
 			{
 				dup2(pipe_fd[j - 1][0], 0);
-				if (strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
+				if (argv[i + count_arg(argv, i) + 1]
+					&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
+				{
 					dup2(pipe_fd[j][1], 1);
+				}
 			}
 			path = strdup(argv[i]);
 			args = stock_args(argv, &i);
@@ -191,9 +195,7 @@ int		main(int argc, char **argv, char **envp)
 			return (0);
 		}
 		j++;
-		i++;
-		printf("");
-		i += count_arg(argv, i);
+		i += count_arg(argv, i) + 1;
 		if (argv[i] && strcmp(argv[i], "|") == 0)
 			i++;
 	}
