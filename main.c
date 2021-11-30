@@ -6,7 +6,7 @@
 /*   By: mlebrun <mlebrun@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/11/28 18:45:14 by mlebrun           #+#    #+#             */
-/*   Updated: 2021/11/30 10:57:10 by mlebrun          ###   ########.fr       */
+/*   Updated: 2021/11/30 11:25:32 by mlebrun          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,6 +153,19 @@ int		**init_pipe(unsigned int nb_cmd)
 	return (pipe_fd);
 }
 
+void	close_fds(int **pipe_fd, unsigned int nb_cmd)
+{
+	unsigned int	i;
+
+	i = 0;
+	while (i < nb_cmd - 1)
+	{
+		close(pipe_fd[i][0]);
+		close(pipe_fd[i][1]);
+		i++;
+	}
+}
+
 int		main(int argc, char **argv, char **envp)
 {
 	int					i;
@@ -199,6 +212,7 @@ int		main(int argc, char **argv, char **envp)
 		if (argv[i] && strcmp(argv[i], "|") == 0)
 			i++;
 	}
+	close_fds(pipe_fd, nb_cmd);
 	wait_cmds_execution(pids, nb_cmd);
 	return (0);
 }
