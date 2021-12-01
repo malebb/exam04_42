@@ -74,26 +74,26 @@ char	*ft_strdup(char *str)
 	return (new_str);
 }
 
-char	**stock_args(char **argv, int *i)
+char	**stock_args(char **argv, int i)
 {
 	char			**args;
 	unsigned int	arg_nb;
 	unsigned int	j;
 
-	arg_nb = count_arg(argv, *i);
+	arg_nb = count_arg(argv, i);
 	args = malloc(sizeof(char *) * (arg_nb + 2));
 	if (!args)
 		return (NULL);
 	j = 0;
-	args[j] = argv[*i];
-	*i = *i + 1;
+	args[j] = argv[i];
+	i = i + 1;
 	j++;
-	while (argv[*i] != NULL && strcmp(argv[*i], ";") != 0
-			&& strcmp(argv[*i], "|") != 0)
+	while (argv[i] != NULL && strcmp(argv[i], ";") != 0
+			&& strcmp(argv[i], "|") != 0)
 	{
-		args[j] = ft_strdup(argv[*i]);
+		args[j] = ft_strdup(argv[i]);
 		j++;
-		*i = *i + 1;
+		i = i + 1;
 	}
 	args[j] = NULL;
 	return (args);
@@ -103,11 +103,11 @@ void	print_cmd(char *path, char **args)
 {
 	unsigned int	i;
 
-	printf("path = %s\n", path);
+	fprintf(stderr, "path = %s\n", path);
 	i = 0;
 	while (args[i] != NULL)
 	{
-		printf("arg: %s\n", args[i]);
+		fprintf(stderr, "arg: %s\n", args[i]);
 		i++;
 	}
 }
@@ -165,9 +165,34 @@ void	close_fds(int **pipe_fd, unsigned int nb_cmd)
 	}
 }
 
+int		count_cmd_block(char **argv)
+{
+	unsigned int	i;
+	unsigned int	count;
+
+	i = 0;
+	count = 0;
+	while (argv[i] != NULL && strcmp(argv[i], ";") != 0)
+	{
+		i += count_arg(argv, i) + 1;
+		count++;
+	}
+	return (count);
+}
+
+void	goto_next_block(char **argv, unsigned int *i, unsigned int nb_cmd)
+{
+	while (argv[*i] != NULL && strcmp(argv[*i], ";") != 0)
+	{
+		*i = *i + count_arg(argv, *i) + 1;
+	}
+	if (argv[*i] != NULL && strcmp(argv[*i], ";") == 0)
+		*i = *i + 1;
+}
+int		o = 0;
 int		main(int argc, char **argv, char **envp)
 {
-	int					i;
+	unsigned int		i;
 	int					j;
 	char				**args;
 	char				*path;
@@ -176,52 +201,39 @@ int		main(int argc, char **argv, char **envp)
 	int					**pipe_fd;
 
 	i = 1;
-	j = 0;
-	nb_cmd = count_cmd(argv);
-	pids = malloc(sizeof(int) * nb_cmd);
-	pipe_fd = init_pipe(nb_cmd);
 	while (argv[i] != NULL)
 	{
-		if (j != 0)
+		nb_cmd = count_cmd_block(&argv[i]);
+		pipe_fd = init_pipe(nb_cmd);
+		pids = malloc(sizeof(int) * (nb_cmd));
+		if (!pids)
+			return (1);
+		j = 0;
+		while (j < nb_cmd)
 		{
-			fprintf(stderr, "pid = %d\n", pids[j - 1]);
-			waitpid(pids[j - 1], NULL, 0);
-			fprintf(stderr, "PID = %d\n", pids[j]);
-		}
-		pids[j] = fork();
-		if (pids[j] == 0)
-		{
-			if (j == 0)
+			pids[j] = fork();
+			if (pids[j] == 0)
 			{
+					
+				if (j != 0)
+					dup2(pipe_fd[j - 1][0], 0);
 				if (argv[i + count_arg(argv, i) + 1]
-					&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
-				{
-					printf("j = %d\n", j);
-					dup2(pipe_fd[j][1], 1);
-				}
+						&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
+						dup2(pipe_fd[j][1], 1);
+				close_fds(pipe_fd, nb_cmd);
+				path = ft_strdup(argv[i]);
+				args = stock_args(argv, i);
+				execve(path, args, envp);
+				return (1);
 			}
-			else
-			{
-				dup2(pipe_fd[j - 1][0], 0);
-				if (argv[i + count_arg(argv, i) + 1]
-					&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
-				{
-					dup2(pipe_fd[j][1], 1);
-				}
-			}
-			path = strdup(argv[i]);
-			args = stock_args(argv, &i);
-			execve(path, args, envp);
-			printf("Error\n");
-			return (0);
+			i += count_arg(argv, i) + 1;
+			if (argv[i] && (strcmp(argv[i], "|")
+				== 0 || strcmp(argv[i], ";") == 0))
+				i++;
+			j++;
 		}
-		j++;
-		i += count_arg(argv, i) + 1;
-		if (argv[i] && (strcmp(argv[i], "|") == 0 || strcmp(argv[i], ";") == 0))
-			i++;
+		close_fds(pipe_fd, nb_cmd);
+		wait_cmds_execution(pids, nb_cmd);
 	}
-	close_fds(pipe_fd, nb_cmd);
-	printf("OKOK\n");
-	wait_cmds_execution(pids, nb_cmd);
 	return (0);
 }
