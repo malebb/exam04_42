@@ -85,7 +85,7 @@ char	**stock_args(char **argv, int i)
 	if (!args)
 		return (NULL);
 	j = 0;
-	args[j] = argv[i];
+	args[j] = ft_strdup(argv[i]);
 	i = i + 1;
 	j++;
 	while (argv[i] != NULL && strcmp(argv[i], ";") != 0
@@ -220,6 +220,7 @@ void	free_cmd(char *path, char **args)
 		free(args[i]);
 		i++;
 	}
+	free(args);
 }
 
 void	free_cmd_group(int **pipe_fd, int *pids, unsigned int nb_cmd)
@@ -230,6 +231,7 @@ void	free_cmd_group(int **pipe_fd, int *pids, unsigned int nb_cmd)
 	while(i < nb_cmd - 1)
 	{
 		free(pipe_fd[i]);
+		i++;
 	}
 	free(pipe_fd);
 	free(pids);
@@ -254,7 +256,6 @@ int	main(int argc, char **argv, char **envp)
 		if (!pids)
 			return (1);
 		j = 0;
-		fprintf(stderr, "nb_cmd = %d\n", nb_cmd);
 		while (j < nb_cmd)
 		{
 			path = ft_strdup(argv[i]);
@@ -281,9 +282,10 @@ int	main(int argc, char **argv, char **envp)
 					ft_putstr_fd(path, 2);
 					ft_putstr_fd("\n", 2);
 					free_cmd(path, args);
+					free_cmd_group(pipe_fd, pids, nb_cmd);
 					return (1);
 				}
-				
+				free_cmd(path, args);
 			}
 			i += count_arg(argv, i) + 1;
 			if (argv[i] && (strcmp(argv[i], "|")
