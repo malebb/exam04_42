@@ -163,7 +163,7 @@ void	close_fds(int **pipe_fd, unsigned int nb_cmd)
 		close(pipe_fd[i][1]);
 		i++;
 	}
-}
+} 
 
 int		count_cmd_block(char **argv)
 {
@@ -189,8 +189,53 @@ void	goto_next_block(char **argv, unsigned int *i, unsigned int nb_cmd)
 	if (argv[*i] != NULL && strcmp(argv[*i], ";") == 0)
 		*i = *i + 1;
 }
-int		o = 0;
-int		main(int argc, char **argv, char **envp)
+
+int	cd_cmd(char **argv, char **arg, unsigned int i)
+{
+	if (count_arg(argv, i) > 1)
+		write(2, "error: cd: bad arguments\n", 25);
+	if (chdir(arg[1]) == -1)
+		return (0);
+	return (1);
+}
+
+void	ft_putstr_fd(char *str, int fd)
+{
+	write(fd, str, ft_strlen(str));
+}
+
+void	fatal()
+{
+	exit(0);
+}
+
+void	free_cmd(char *path, char **args)
+{
+	unsigned int	i;
+
+	free(path);
+	i = 0;
+	while (args[i] != NULL)
+	{
+		free(args[i]);
+		i++;
+	}
+}
+
+void	free_cmd_group(int **pipe_fd, int *pids, unsigned int nb_cmd)
+{
+	unsigned int	i;
+
+	i = 0;
+	while(i < nb_cmd - 1)
+	{
+		free(pipe_fd[i]);
+	}
+	free(pipe_fd);
+	free(pids);
+}
+
+int	main(int argc, char **argv, char **envp)
 {
 	unsigned int		i;
 	int					j;
@@ -209,22 +254,36 @@ int		main(int argc, char **argv, char **envp)
 		if (!pids)
 			return (1);
 		j = 0;
+		fprintf(stderr, "nb_cmd = %d\n", nb_cmd);
 		while (j < nb_cmd)
 		{
-			pids[j] = fork();
-			if (pids[j] == 0)
+			path = ft_strdup(argv[i]);
+			args = stock_args(argv, i);
+			if (strcmp(path, "cd") == 0)
 			{
-					
-				if (j != 0)
-					dup2(pipe_fd[j - 1][0], 0);
-				if (argv[i + count_arg(argv, i) + 1]
-						&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
+				cd_cmd(argv, args, i);
+			}
+			else
+			{
+				pids[j] = fork();
+				if (pids[j] == -1)
+					fatal();
+				if (pids[j] == 0)
+				{
+					if (j != 0)
+						dup2(pipe_fd[j - 1][0], 0);
+					if (argv[i + count_arg(argv, i) + 1]
+							&& strcmp(argv[i + count_arg(argv, i) + 1], "|") == 0)
 						dup2(pipe_fd[j][1], 1);
-				close_fds(pipe_fd, nb_cmd);
-				path = ft_strdup(argv[i]);
-				args = stock_args(argv, i);
-				execve(path, args, envp);
-				return (1);
+					close_fds(pipe_fd, nb_cmd);
+					execve(path, args, envp);
+					ft_putstr_fd("error: cannot execute ", 2);
+					ft_putstr_fd(path, 2);
+					ft_putstr_fd("\n", 2);
+					free_cmd(path, args);
+					return (1);
+				}
+				
 			}
 			i += count_arg(argv, i) + 1;
 			if (argv[i] && (strcmp(argv[i], "|")
@@ -234,6 +293,7 @@ int		main(int argc, char **argv, char **envp)
 		}
 		close_fds(pipe_fd, nb_cmd);
 		wait_cmds_execution(pids, nb_cmd);
+		free_cmd_group(pipe_fd, pids, nb_cmd);
 	}
 	return (0);
 }
