@@ -215,10 +215,13 @@ void	free_cmd(char *path, char **args)
 
 	free(path);
 	i = 0;
-	while (args[i] != NULL)
+	if (args)
 	{
-		free(args[i]);
-		i++;
+		while (args[i] != NULL)
+		{
+			free(args[i]);
+			i++;
+		}
 	}
 	free(args);
 }
@@ -252,14 +255,40 @@ int	main(int argc, char **argv, char **envp)
 	{
 		nb_cmd = count_cmd_block(&argv[i]);
 		pipe_fd = init_pipe(nb_cmd);
+		pids = NULL;
+		if (!pipe_fd)
+		{
+			free_cmd_group(pipe_fd, pids, nb_cmd);
+			ft_putstr_fd("error: fatal\n", 2);
+			return (1);
+		}
 		pids = malloc(sizeof(int) * (nb_cmd));
 		if (!pids)
+		{
+			free_cmd_group(pipe_fd, pids, nb_cmd);
+			ft_putstr_fd("error: fatal\n", 2);
 			return (1);
+		}
 		j = 0;
 		while (j < nb_cmd)
 		{
+			args = NULL;
 			path = ft_strdup(argv[i]);
+			if (!path)
+			{
+				free_cmd(path, args);
+				free_cmd_group(pipe_fd, pids, nb_cmd);
+				ft_putstr_fd("error: fatal\n", 2);
+				return (1);
+			}
 			args = stock_args(argv, i);
+			if (!args)
+			{
+				free_cmd(path, args);
+				free_cmd_group(pipe_fd, pids, nb_cmd);
+				ft_putstr_fd("error: fatal\n", 2);
+				return (1);
+			}
 			if (strcmp(path, "cd") == 0)
 			{
 				cd_cmd(argv, args, i);
@@ -268,7 +297,12 @@ int	main(int argc, char **argv, char **envp)
 			{
 				pids[j] = fork();
 				if (pids[j] == -1)
-					fatal();
+				{
+					free_cmd(path, args);
+					free_cmd_group(pipe_fd, pids, nb_cmd);
+					ft_putstr_fd("error: fatal\n", 2);
+					return (1);
+				}
 				if (pids[j] == 0)
 				{
 					if (j != 0)
