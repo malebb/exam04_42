@@ -6,7 +6,7 @@
 /*   By: mlebrun <mlebrun@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/12/10 11:33:03 by mlebrun           #+#    #+#             */
-/*   Updated: 2021/12/10 16:03:52 by mlebrun          ###   ########.fr       */
+/*   Updated: 2021/12/10 16:14:14 by mlebrun          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,7 @@ char	**fill_args(char **argv, unsigned int i)
 	return (args);
 }
 
-
+/*
 void	print_cmds(t_data data)
 {
 	unsigned int	i;
@@ -111,7 +111,7 @@ void	print_cmds(t_data data)
 		i++;
 	}
 }
-
+*/
 
 void	go_to_next_group(char **argv, unsigned int *i, t_data data)
 {
@@ -170,7 +170,7 @@ void	pipe_cmd(t_data data, char **argv, unsigned int i, unsigned int j)
 	}
 	else
 	{
-		if (!dup2(data.pipe_fd[0], 0) == -1)
+		if (dup2(data.pipe_fd[0], 0) == -1)
 			fatal(data);
 		if (argv[i + size_cmd(argv, i)] != NULL
 				&& strcmp(argv[i + size_cmd(argv, i)], "|") == 0)
@@ -298,12 +298,15 @@ int	main(int argc, char **argv, char **envp)
 	unsigned int	i;
 	t_data			data;
 
+	(void)argc;
 	i = 1;
 	init_data(&data, envp);
 	while (argv[i] != NULL)
 	{
 		data.nb_cmd_group = count_cmd_group(argv, i);
 		data.pids = init_pids(data);
+		if (!data.pids)
+			fatal(data);
 		execute_group_cmd(data, argv, i);
 		wait_cmd_group(data);
 		go_to_next_group(argv, &i, data);
